@@ -304,9 +304,9 @@ class ObservationSpaceType(spaces.Dict):
                     }
                 ),
                 # size of the credential stack
-                "credential_cache_length": spaces.Discrete(bounds.maximum_total_credentials),
+                "credential_cache_length": spaces.Discrete(bounds.maximum_total_credentials + 1),
                 # total nodes discovered so far
-                "discovered_node_count": spaces.Discrete(bounds.maximum_node_count),
+                "discovered_node_count": spaces.Discrete(bounds.maximum_node_count + 1),
                 # Matrix of properties for all the discovered nodes
                 # 3 values for each matrix cell: set, unset, unknown
                 "discovered_nodes_properties": spaces.MultiDiscrete(np.full(shape=(bounds.maximum_node_count, bounds.property_count), fill_value=3)),
