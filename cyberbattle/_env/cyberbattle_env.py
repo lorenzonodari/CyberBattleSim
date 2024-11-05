@@ -128,6 +128,7 @@ StepInfo = TypedDict(
         "network_availability": float,
         # internal IDs of the credentials in the cache
         "credential_cache": List[model.CachedCredential],
+        "last_action_outcome": str
     },
 )
 
@@ -1155,6 +1156,7 @@ class CyberBattleEnv(CyberBattleSpaceKind):
         try:
             result = self.__execute_action(action)
             observation, reward = self.__observation_reward_from_action_result(result)
+            action_outcome_str = result.description
 
             # Execute the defender step if provided
             if self.__defender_agent:
@@ -1176,6 +1178,7 @@ class CyberBattleEnv(CyberBattleSpaceKind):
             logging.warning("Invalid entity index: " + error.__str__())
             observation = self.__get_blank_observation()
             reward = 0.0
+            action_outcome_str = "Invalid entity index"
 
         info = StepInfo(
             description="CyberBattle simulation",
@@ -1183,6 +1186,7 @@ class CyberBattleEnv(CyberBattleSpaceKind):
             step_count=self.__stepcount,
             network_availability=self._defender_actuator.network_availability,
             credential_cache=self.__credential_cache,
+            last_action_outcome=action_outcome_str
         )
         self.__episode_rewards.append(reward)
 
