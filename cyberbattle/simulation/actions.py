@@ -106,6 +106,7 @@ class ActionResult(NamedTuple):
 
     reward: Reward
     outcome: Optional[model.VulnerabilityOutcome]
+    description: str = ""
 
 
 ALGEBRA = boolean.BooleanAlgebra()
@@ -334,7 +335,11 @@ class AgentActions:
     ) -> Tuple[bool, ActionResult]:
         if node_info.status != model.MachineStatus.Running:
             logger.info("target machine not in running state")
-            return False, ActionResult(reward=Penalty.MACHINE_NOT_RUNNING, outcome=None)
+            return False, ActionResult(
+                reward=Penalty.MACHINE_NOT_RUNNING,
+                outcome=None,
+                description='Tried targetting a non-running machine'
+            )
 
         is_global_vulnerability = vulnerability_id in self._environment.vulnerability_library
         is_inplace_vulnerability = vulnerability_id in node_info.vulnerabilities
@@ -348,7 +353,11 @@ class AgentActions:
                 raise ValueError(f"Vulnerability '{vulnerability_id}' not supported by node='{node_id}'")
             else:
                 logger.info(f"Vulnerability '{vulnerability_id}' not supported by node '{node_id}'")
-                return False, ActionResult(reward=Penalty.SUPSPICIOUSNESS, outcome=None)
+                return False, ActionResult(
+                    reward=Penalty.SUPSPICIOUSNESS,
+                    outcome=None,
+                    description='Tried executing a vulnerability not present on the node'
+                )
 
         vulnerability = vulnerabilities[vulnerability_id]
 
@@ -359,7 +368,11 @@ class AgentActions:
 
         # check vulnerability prerequisites
         if not self._check_prerequisites(node_id, vulnerability):
-            return False, ActionResult(reward=failed_penalty, outcome=model.ExploitFailed())
+            return False, ActionResult(
+                reward=failed_penalty,
+                outcome=model.ExploitFailed(),
+                description='Exploit prerequisites not satisfied'
+            )
 
         reward = 0
 
@@ -368,7 +381,11 @@ class AgentActions:
         # then add the escalation tag to the node properties
         if isinstance(outcome, model.PrivilegeEscalation):
             if outcome.tag in node_info.properties:
-                return False, ActionResult(reward=Penalty.REPEAT, outcome=outcome)
+                return False, ActionResult(
+                    reward=Penalty.REPEAT,
+                    outcome=outcome,
+                    description='Tried re-escalating to a previously obtained level'
+                )
 
             last_owned_at, is_currently_owned = self.__mark_node_as_owned(node_id, outcome.level)
 
@@ -420,7 +437,11 @@ class AgentActions:
         reward -= vulnerability.cost
 
         logger.info("GOT REWARD: " + vulnerability.reward_string)
-        return True, ActionResult(reward=reward, outcome=outcome)
+        return True, ActionResult(
+            reward=reward,
+            outcome=outcome,
+            description=vulnerability.reward_string
+        )
 
     def exploit_remote_vulnerability(
         self,
@@ -445,13 +466,21 @@ class AgentActions:
             if self._throws_on_invalid_actions:
                 raise ValueError("Agent does not owned the source node '" + node_id + "'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Tried launching a remote attack from a non-owned node'
+                )
 
         if target_node_id not in self._discovered_nodes:
             if self._throws_on_invalid_actions:
                 raise ValueError("Agent has not discovered the target node '" + target_node_id + "'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Tried exploiting a remote vulnerability of a non-discovered node'
+                )
 
         succeeded, result = self.__process_outcome(
             model.VulnerabilityType.REMOTE,
@@ -487,7 +516,11 @@ class AgentActions:
             if self._throws_on_invalid_actions:
                 raise ValueError(f"Agent does not owned the node '{node_id}'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Tried exploiting a local vulnerability on a non-owned node'
+                )
 
         succeeded, result = self.__process_outcome(
             model.VulnerabilityType.LOCAL,
@@ -548,48 +581,84 @@ class AgentActions:
             if self._throws_on_invalid_actions:
                 raise ValueError(f"Agent does not owned the source node '{source_node_id}'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Agent does not own the provided source node'
+                )
 
         if target_node_id not in self._discovered_nodes:
             if self._throws_on_invalid_actions:
                 raise ValueError(f"Agent has not discovered the target node '{target_node_id}'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Agent has not discovered the provided target node'
+                )
 
         if credential not in self._gathered_credentials:
             if self._throws_on_invalid_actions:
                 raise ValueError(f"Agent has not discovered credential '{credential}'")
             else:
-                return ActionResult(reward=Penalty.INVALID_ACTION, outcome=None)
+                return ActionResult(
+                    reward=Penalty.INVALID_ACTION,
+                    outcome=None,
+                    description='Agent has not discovered the provided credentials'
+                )
 
         if not self.__is_passing_firewall_rules(source_node.firewall.outgoing, port_name):
             logger.info(f"BLOCKED TRAFFIC: source node '{source_node_id}'" + f" is blocking outgoing traffic on port '{port_name}'")
-            return ActionResult(reward=Penalty.BLOCKED_BY_LOCAL_FIREWALL, outcome=None)
+            return ActionResult(
+                reward=Penalty.BLOCKED_BY_LOCAL_FIREWALL,
+                outcome=None,
+                description='Connection attempt was blocked by source node outgoing firewall rules'
+            )
 
         if not self.__is_passing_firewall_rules(target_node.firewall.incoming, port_name):
             logger.info(f"BLOCKED TRAFFIC: target node '{target_node_id}'" + f" is blocking outgoing traffic on port '{port_name}'")
-            return ActionResult(reward=Penalty.BLOCKED_BY_REMOTE_FIREWALL, outcome=None)
+            return ActionResult(
+                reward=Penalty.BLOCKED_BY_REMOTE_FIREWALL,
+                outcome=None,
+                description='Connection attempt was blocked by target node ingoing firewall rules'
+            )
 
         target_node_is_listening = port_name in [i.name for i in target_node.services]
         if not target_node_is_listening:
             logger.info(f"target node '{target_node_id}' not listening on port '{port_name}'")
-            return ActionResult(reward=Penalty.SCANNING_UNOPEN_PORT, outcome=None)
+            return ActionResult(
+                reward=Penalty.SCANNING_UNOPEN_PORT,
+                outcome=None,
+                description='Tried connecting to a closed port'
+            )
         else:
             target_node_data: model.NodeInfo = self._environment.get_node(target_node_id)
 
             if target_node_data.status != model.MachineStatus.Running:
                 logger.info("target machine not in running state")
-                return ActionResult(reward=Penalty.MACHINE_NOT_RUNNING, outcome=None)
+                return ActionResult(
+                    reward=Penalty.MACHINE_NOT_RUNNING,
+                    outcome=None,
+                    description='Tried connecting to a non-running machine'
+                )
 
             # check the credentials before connecting
             if not self._check_service_running_and_authorized(target_node_data, port_name, credential):
                 logger.info("invalid credentials supplied")
-                return ActionResult(reward=Penalty.WRONG_PASSWORD, outcome=None)
+                return ActionResult(
+                    reward=Penalty.WRONG_PASSWORD,
+                    outcome=None,
+                    description='Tried connecting with invalid credentials'
+                )
 
             last_owned_at, is_already_owned = self.__mark_node_as_owned(target_node_id)
 
             if is_already_owned:
-                return ActionResult(reward=Penalty.REPEAT, outcome=model.LateralMove())
+                return ActionResult(
+                    reward=Penalty.REPEAT,
+                    outcome=model.LateralMove(),
+                    description='Succesfully connected to an already owned node'
+                )
 
             if target_node_id not in self._discovered_nodes:
                 self._discovered_nodes[target_node_id] = NodeTrackingInformation()
@@ -603,6 +672,7 @@ class AgentActions:
             return ActionResult(
                 reward=float(target_node_data.value) if last_owned_at is None else 0.0,
                 outcome=model.LateralMove(),
+                description='Lateral movement succeded'
             )
 
     def _check_service_running_and_authorized(
