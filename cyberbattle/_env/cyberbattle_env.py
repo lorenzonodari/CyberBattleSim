@@ -1213,6 +1213,7 @@ class CyberBattleEnv(CyberBattleSpaceKind):
             step_count=self.__stepcount,
             network_availability=self._defender_actuator.network_availability,
             credential_cache=self.__credential_cache,
+            last_action_outcome=""
         )
         return observation, info
 
