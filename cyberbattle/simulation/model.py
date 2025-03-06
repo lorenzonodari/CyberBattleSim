@@ -25,7 +25,7 @@ formally defined by:
 """
 
 from datetime import datetime
-from typing import NamedTuple, List, Dict, Optional, Union, Tuple, Iterator
+from typing import NamedTuple, List, Dict, Optional, Union, Tuple, Iterator, Set, Iterable
 import dataclasses
 from dataclasses import dataclass, field
 import matplotlib.pyplot as plt  # type:ignore
@@ -188,13 +188,30 @@ class LeakedCredentials(VulnerabilityOutcome):
         self.credentials = credentials
 
 
+
+# for cyberkeys env
+
+'''
+class CachedNonce(NamedTuple):
+    port: PortName
+    id: NodeID
+    used: bool = False
+
+class LeakedNonces(VulnerabilityOutcome):
+    nonces = Set[CachedNonce]
+    def __init__(self, nonces: Iterable[CachedNonce]):
+        self.nonces = set(nonces)
+'''
+
+
+
 class LeakedNodesId(VulnerabilityOutcome):
     """A set of node IDs obtained by exploiting a vulnerability"""
 
     def __init__(self, nodes: List[NodeID]):
         self.nodes = nodes
 
-
+#VulnerabilityOutcomes = Union[LeakedCredentials, LeakedNodesId, PrivilegeEscalation, AdminEscalation, SystemEscalation, CustomerData, LateralMove, ExploitFailed, LeakedNonces]
 VulnerabilityOutcomes = Union[LeakedCredentials, LeakedNodesId, PrivilegeEscalation, AdminEscalation, SystemEscalation, CustomerData, LateralMove, ExploitFailed]
 
 
@@ -381,6 +398,7 @@ class Environment:
     network: nx.DiGraph
     vulnerability_library: VulnerabilityLibrary
     identifiers: Identifiers
+    cred_nodes: list = field(default_factory=list) 
     creationTime: datetime = datetime.utcnow()
     lastModified: datetime = datetime.utcnow()
     # a version tag indicating the environment schema version

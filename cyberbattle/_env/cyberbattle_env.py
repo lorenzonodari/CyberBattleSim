@@ -128,7 +128,8 @@ StepInfo = TypedDict(
         "network_availability": float,
         # internal IDs of the credentials in the cache
         "credential_cache": List[model.CachedCredential],
-        "last_action_outcome": str
+        "last_action_outcome": str,
+        "action_success": bool,
     },
 )
 
@@ -713,7 +714,6 @@ class CyberBattleEnv(CyberBattleSpaceKind):
 
         if "local_vulnerability" in action:
             source_node_index, vulnerability_index = action["local_vulnerability"]
-
             return self._actuator.exploit_local_vulnerability(
                 self.__internal_node_id_from_external_node_index(source_node_index),
                 self.__index_to_local_vulnerabilityid(vulnerability_index),
@@ -734,15 +734,18 @@ class CyberBattleEnv(CyberBattleSpaceKind):
 
         elif "connect" in action:
             source_node, target_node, port_index, credential_cache_index = action["connect"]
+
             if credential_cache_index < 0 or credential_cache_index >= len(self.__credential_cache):
                 return actions.ActionResult(
                     reward=-1,
                     outcome=None,
                     description="Invalid 'connect' action attempted"
                 )
-
+            
             source_node_id = self.__internal_node_id_from_external_node_index(source_node)
             target_node_id = self.__internal_node_id_from_external_node_index(target_node)
+
+
 
             result = self._actuator.connect_to_remote_machine(
                 source_node_id,
@@ -751,8 +754,13 @@ class CyberBattleEnv(CyberBattleSpaceKind):
                 self.__credential_cache[credential_cache_index].credential,
             )
 
-            return result
+            # EDIT for cyberkeys env: remove the credential (by ID) from the cache if it was used
+            self.__credential_cache = [
+                c for c in self.__credential_cache if c.credential != self.__credential_cache[credential_cache_index].credential
+            ]
 
+            return result
+            
         raise ValueError("Invalid discriminated union value: " + str(action))
 
     def __get_blank_observation(self) -> Observation:
@@ -1186,7 +1194,8 @@ class CyberBattleEnv(CyberBattleSpaceKind):
             step_count=self.__stepcount,
             network_availability=self._defender_actuator.network_availability,
             credential_cache=self.__credential_cache,
-            last_action_outcome=action_outcome_str
+            last_action_outcome=action_outcome_str,
+            action_success = True if result.outcome else False
         )
         self.__episode_rewards.append(reward)
 
