@@ -744,9 +744,6 @@ class CyberBattleEnv(CyberBattleSpaceKind):
             
             source_node_id = self.__internal_node_id_from_external_node_index(source_node)
             target_node_id = self.__internal_node_id_from_external_node_index(target_node)
-
-
-
             result = self._actuator.connect_to_remote_machine(
                 source_node_id,
                 target_node_id,
@@ -1249,3 +1246,8 @@ class CyberBattleEnv(CyberBattleSpaceKind):
 
     def close(self) -> None:
         return None
+
+
+
+    def get_actuator(self):
+        return self._actuator
