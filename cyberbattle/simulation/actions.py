@@ -285,9 +285,11 @@ class AgentActions:
 
         if isinstance(outcome, model.LeakedCredentials):
             for credential in outcome.credentials:
-                if self.__mark_node_as_discovered(credential.node):
-                    newly_discovered_nodes += 1
-                    newly_discovered_nodes_value += self._environment.get_node(credential.node).value
+
+                # ale-gaudenzi : per l'environment keys mi serve che l'agente non scopra il nodo insieme alle credenziali ma lo scopra attraverso un nodo intermedio
+                #if self.__mark_node_as_discovered(credential.node):
+                #    newly_discovered_nodes += 1
+                #    newly_discovered_nodes_value += self._environment.get_node(credential.node).value
 
                 if credential.credential not in self._gathered_credentials:
                     newly_discovered_credentials += 1
