@@ -398,10 +398,11 @@ class Environment:
     network: nx.DiGraph
     vulnerability_library: VulnerabilityLibrary
     identifiers: Identifiers
-    cred_nodes: list = field(default_factory=list)
     all_nodes: Dict[NodeID, NodeInfo] = field(default_factory=dict)
     creationTime: datetime = datetime.utcnow()
     lastModified: datetime = datetime.utcnow()
+    goal_gateway_nodes: list = field(default_factory=list)
+
     # a version tag indicating the environment schema version
     version: str = VERSION_TAG
 
